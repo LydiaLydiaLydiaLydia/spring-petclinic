@@ -8,6 +8,8 @@ pipeline {
     
     environment {
         APP_NAME = 'spring-petclinic'
+        SONAR_PROJECT_KEY = 'LydiaLydiaLydiaLydia_spring-petclinic'
+        SONAR_ORGANIZATION = 'LydiaLydiaLydiaLydia'
     }
     
     stages {
@@ -34,6 +36,29 @@ pipeline {
                 always {
                     junit '**/target/surefire-reports/*.xml'
                     echo 'Test results published'
+                }
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                echo 'Running SonarQube code analysis...'
+                withSonarQubeEnv('SonarCloud') {
+                    sh """
+                        mvn sonar:sonar \
+                          -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                          -Dsonar.organization=${SONAR_ORGANIZATION} \
+                          -Dsonar.host.url=https://sonarcloud.io
+                    """
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                echo 'Waiting for SonarQube quality gate result...'
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
                 }
             }
         }
