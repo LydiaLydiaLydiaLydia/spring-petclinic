@@ -9,7 +9,7 @@ pipeline {
     environment {
         APP_NAME = 'spring-petclinic'
         SONAR_PROJECT_KEY = 'LydiaLydiaLydiaLydia_spring-petclinic'
-        SONAR_ORGANIZATION = 'LydiaLydiaLydiaLydia'
+        SONAR_ORGANIZATION = 'lydialydialydialydia'
     }
     
     stages {
