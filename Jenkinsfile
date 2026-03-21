@@ -12,6 +12,9 @@ pipeline {
         SONAR_ORGANIZATION = 'lydialydialydialydia'
         RECIPIENT_EMAIL = 'lydia.sheehan2@gmail.com'
         DEPLOY_PORT = '8090'  // Added for deployment
+        DOCKER_HUB_USERNAME = 'lydialydialydialydia'
+        DOCKER_IMAGE_NAME = "${DOCKER_HUB_USERNAME}/petclinic"
+        DOCKER_IMAGE_TAG = "${BUILD_NUMBER}"
     }
     
     stages {
@@ -95,38 +98,88 @@ pipeline {
             }
         }
 
+
+        stage('Build Docker Image') {
+            steps {
+                echo 'Building Docker image...'
+                script {
+                    // Build image with build number tag
+                    sh """
+                        docker build -t ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} .
+                        docker build -t ${DOCKER_IMAGE_NAME}:latest .
+                    """
+                }
+            }
+            post {
+                success {
+                    echo "Docker image built: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
+                }
+            }
+        }
+
+        stage('Push to Docker Hub') {
+            steps {
+                echo 'Pushing Docker image to Docker Hub...'
+                script {
+                    // Login and push
+                    withCredentials([usernamePassword(
+                        credentialsId: 'dockerhub-credentials',
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_PASS'
+                    )]) {
+                        sh """
+                            echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin
+                            docker push ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
+                            docker push ${DOCKER_IMAGE_NAME}:latest
+                            docker logout
+                        """
+                    }
+                }
+            }
+            post {
+                success {
+                    echo "Image pushed to Docker Hub: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
+                }
+            }
+        }
+
         stage('Deploy to Test Server') {
             steps {
-                echo 'Deploying application...'
+                echo 'Deploying application from Docker image...'
                 script {
-                    // Copy JAR to a known location
-                    sh '''
-                        mkdir -p /var/jenkins_home/deploy
-                        cp target/*.jar /var/jenkins_home/deploy/petclinic.jar
-                        echo "JAR copied to deploy directory"
-                    '''
+                    sh """
+                        # Stop and remove old container if exists
+                        docker stop petclinic-app || true
+                        docker rm petclinic-app || true
+                        
+                        # Pull the latest image
+                        docker pull ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
+                        
+                        # Run the new container
+                        docker run -d \
+                            --name petclinic-app \
+                            --network jenkins_jenkins \
+                            -p 8090:8080 \
+                            --restart unless-stopped \
+                            ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
+                        
+                        echo "Container started with image: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
+                    """
                     
-                    // Restart the PetClinic container to pick up new JAR
-                    sh '''
-                        # The docker command below runs from within the jenkins container
-                        # but talks to the DinD container which manages all containers
-                        docker restart petclinic-app || echo "Container will start on first deploy"
-                    '''
-                    
-                    // Wait for it to be healthy
+                    // Health check
                     sh '''
                         echo "Waiting for application to start..."
                         COUNTER=0
-                        MAX_ATTEMPTS=40
+                        MAX_ATTEMPTS=30
                         
                         while [ $COUNTER -lt $MAX_ATTEMPTS ]; do
-                            if curl -s http://petclinic-app:8080 > /dev/null 2>&1; then
-                                echo "✓ Application is up!"
+                            if docker exec petclinic-app wget --quiet --tries=1 --spider http://localhost:8080 2>/dev/null; then
+                                echo "✓ Application is up and responding!"
                                 exit 0
                             fi
                             COUNTER=$((COUNTER + 1))
                             echo "Waiting... attempt $COUNTER/$MAX_ATTEMPTS"
-                            sleep 3
+                            sleep 2
                         done
                         
                         echo "✗ Application failed to start"
@@ -137,11 +190,12 @@ pipeline {
             }
             post {
                 success {
-                    echo '✓ Application deployed successfully!'
-                    echo 'Access at: http://localhost:8090'
+                    echo 'Application deployed successfully!'
+                    echo "Access at: http://localhost:8090"
+                    echo "Image: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
                 }
                 failure {
-                    echo '✗ Deployment failed'
+                    echo 'Deployment failed!'
                 }
             }
         }
