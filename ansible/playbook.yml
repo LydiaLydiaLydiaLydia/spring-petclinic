@@ -1,0 +1,32 @@
+---
+- name: Configure PetClinic Application Environment
+  hosts: app_servers
+  become: yes
+  
+  vars:
+    app_port: 8090
+    app_user: jenkins
+    app_dir: /var/jenkins_home/petclinic
+    
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+      
+    - name: Install Java 17
+      apt:
+        name: openjdk-17-jre
+        state: present
+      when: ansible_os_family == "Debian"
+      
+    - name: Create application directory
+      file:
+        path: "{{ app_dir }}"
+        state: directory
+        owner: "{{ app_user }}"
+        mode: '0755'
+        
+    - name: Ensure application port is documented
+      debug:
+        msg: "Application will run on port {{ app_port }}"

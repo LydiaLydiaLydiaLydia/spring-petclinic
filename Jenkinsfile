@@ -78,6 +78,23 @@ pipeline {
             }
         }
         
+        stage('Configure Environment with Ansible') {
+            steps {
+                echo 'Configuring deployment environment...'
+                script {
+                    sh '''
+                        cd ansible
+                        ansible-playbook playbook.yml -i inventory.ini
+                    '''
+                }
+            }
+            post {
+                success {
+                    echo '✓ Environment configured successfully'
+                }
+            }
+        }
+
         stage('Deploy to Test Server') {
             steps {
                 echo 'Deploying application...'
