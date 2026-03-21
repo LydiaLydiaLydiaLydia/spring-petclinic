@@ -139,18 +139,42 @@ pipeline {
     
     post {
         always {
-            echo 'Pipeline execution completed'
+            echo 'Pipeline completed'
         }
+        
         success {
-            echo 'Build and deployment succeeded!'
+            echo 'Build succeeded!'
             emailext (
-                subject: "✅ SUCCESS: ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
+                subject: "SUCCESS: ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
                 body: """
-                    <h2 style="color: green;">Build and Deployment Successful!</h2>
+                    Build Successful!
                     
-                    <p><strong>Job:</strong> ${env.JOB_NAME}</p>
-                    <p><strong>Build Number:</strong> ${env.BUILD_NUMBER}</p>
-                    <p><strong>Build URL:</strong> <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
-                    <p><strong>Duration:</strong> ${currentBuild.durationString}</p>
+                    Job: ${env.JOB_NAME}
+                    Build Number: ${env.BUILD_NUMBER}
+                    Build URL: ${env.BUILD_URL}
                     
-                    <h3>What happened:</h3>
+                    All stages completed successfully.
+                """,
+                to: 'your-email@example.com',
+                mimeType: 'text/plain'
+            )
+        }
+        
+        failure {
+            echo 'Build failed!'
+            emailext (
+                subject: "FAILURE: ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
+                body: """
+                    Build Failed!
+                    
+                    Job: ${env.JOB_NAME}
+                    Build Number: ${env.BUILD_NUMBER}
+                    Build URL: ${env.BUILD_URL}
+                    
+                    Check console output for details.
+                """,
+                to: 'your-email@example.com',
+                mimeType: 'text/plain'
+            )
+        }
+    }
