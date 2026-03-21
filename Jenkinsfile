@@ -15,6 +15,8 @@ pipeline {
         DOCKER_HUB_USERNAME = 'lydialydialydialydia'
         DOCKER_IMAGE_NAME = "${DOCKER_HUB_USERNAME}/petclinic"
         DOCKER_IMAGE_TAG = "${BUILD_NUMBER}"
+        GCP_HOST = '34.62.1.12'
+        GCP_USER = 'lydia_sheehan2'
     }
     
     stages {
@@ -147,12 +149,11 @@ pipeline {
             steps {
                 echo 'Deploying to GCP VM...'
                 script {
-                    def gcpHost = '34.62.1.12'
-                    def gcpUser = 'lydia_sheehan2'
+                    
                     
                     sshagent(['gcp-vm-ssh']) {
                         sh """
-                            ssh -o StrictHostKeyChecking=no ${gcpUser}@${gcpHost} '
+                            ssh -o StrictHostKeyChecking=no ${GCP_USER}@${GCP_HOST} '
                                 # Stop and remove old container
                                 docker stop petclinic || true
                                 docker rm petclinic || true
@@ -173,7 +174,7 @@ pipeline {
                         
                         // Health check
                         sh """
-                            ssh -o StrictHostKeyChecking=no ${gcpUser}@${gcpHost} '
+                            ssh -o StrictHostKeyChecking=no ${GCP_USER}@${GCP_HOST} '
                                 echo "Waiting for application to start..."
                                 for i in {1..30}; do
                                     if curl -s http://localhost:8080 > /dev/null 2>&1; then
@@ -194,7 +195,7 @@ pipeline {
             post {
                 success {
                     echo '✓ Successfully deployed to Google Cloud!'
-                    echo "Application URL: http://${gcpHost}:8080"
+                    echo "Application URL: http://${GCP_HOST}:8080"
                 }
                 failure {
                     echo '✗ GCP deployment failed'
