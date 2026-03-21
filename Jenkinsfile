@@ -11,6 +11,7 @@ pipeline {
         SONAR_PROJECT_KEY = 'LydiaLydiaLydiaLydia_spring-petclinic'
         SONAR_ORGANIZATION = 'lydialydialydialydia'
         RECIPIENT_EMAIL = 'lydia.sheehan2@gmail.com'
+        DEPLOY_PORT = '8090'  // Added for deployment
     }
     
     stages {
@@ -76,6 +77,64 @@ pipeline {
                 }
             }
         }
+        
+        // NEW STAGE - Deploy to Test Server
+        stage('Deploy to Test Server') {
+            steps {
+                echo 'Deploying application to test environment...'
+                script {
+                    // Stop any existing instance
+                    sh '''
+                        PID=$(ps aux | grep 'spring-petclinic' | grep -v grep | awk '{print $2}' | head -1)
+                        if [ ! -z "$PID" ]; then
+                            echo "Stopping existing application (PID: $PID)"
+                            kill -9 $PID || true
+                            sleep 2
+                        else
+                            echo "No existing application running"
+                        fi
+                    '''
+                    
+                    // Start the application in background
+                    sh """
+                        echo "Starting application on port ${DEPLOY_PORT}..."
+                        nohup java -jar target/*.jar \
+                          --server.port=${DEPLOY_PORT} \
+                          > /var/jenkins_home/petclinic.log 2>&1 &
+                        
+                        echo \$! > /var/jenkins_home/petclinic.pid
+                        echo "Application started with PID: \$(cat /var/jenkins_home/petclinic.pid)"
+                    """
+                    
+                    // Wait for application to start and verify health
+                    sh """
+                        echo "Waiting for application to start..."
+                        for i in {1..30}; do
+                            if curl -s http://localhost:${DEPLOY_PORT} > /dev/null 2>&1; then
+                                echo "✅ Application is up and responding!"
+                                curl -s http://localhost:${DEPLOY_PORT} | grep -q "PetClinic" && echo "✅ PetClinic homepage verified"
+                                exit 0
+                            fi
+                            echo "Still starting... attempt \$i/30"
+                            sleep 2
+                        done
+                        echo "❌ Application failed to start within 60 seconds"
+                        cat /var/jenkins_home/petclinic.log
+                        exit 1
+                    """
+                }
+            }
+            post {
+                success {
+                    echo '✅ Application deployed successfully!'
+                    echo "🌐 Access the application at: http://localhost:${DEPLOY_PORT}"
+                }
+                failure {
+                    echo '❌ Deployment failed - checking logs...'
+                    sh 'tail -50 /var/jenkins_home/petclinic.log || echo "No log file found"'
+                }
+            }
+        }
     }
     
     post {
@@ -83,11 +142,11 @@ pipeline {
             echo 'Pipeline execution completed'
         }
         success {
-            echo 'Build succeeded!'
+            echo 'Build and deployment succeeded!'
             emailext (
                 subject: "✅ SUCCESS: ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
                 body: """
-                    <h2 style="color: green;">Build Successful!</h2>
+                    <h2 style="color: green;">Build and Deployment Successful!</h2>
                     
                     <p><strong>Job:</strong> ${env.JOB_NAME}</p>
                     <p><strong>Build Number:</strong> ${env.BUILD_NUMBER}</p>
@@ -95,57 +154,3 @@ pipeline {
                     <p><strong>Duration:</strong> ${currentBuild.durationString}</p>
                     
                     <h3>What happened:</h3>
-                    <ul>
-                        <li>✅ Code compiled successfully</li>
-                        <li>✅ All tests passed</li>
-                        <li>✅ Code quality gate passed</li>
-                        <li>✅ Application packaged</li>
-                    </ul>
-                    
-                    <p><a href="${env.BUILD_URL}console">View Console Output</a></p>
-                """,
-                to: "${RECIPIENT_EMAIL}",
-                mimeType: 'text/html'
-            )
-        }
-        failure {
-            echo 'Build failed!'
-            emailext (
-                subject: "❌ FAILURE: ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
-                body: """
-                    <h2 style="color: red;">Build Failed!</h2>
-                    
-                    <p><strong>Job:</strong> ${env.JOB_NAME}</p>
-                    <p><strong>Build Number:</strong> ${env.BUILD_NUMBER}</p>
-                    <p><strong>Build URL:</strong> <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
-                    
-                    <h3>Action Required:</h3>
-                    <p>The build has failed. Please check the console output for details:</p>
-                    <p><a href="${env.BUILD_URL}console">View Console Output</a></p>
-                    
-                    <h3>Recent Changes:</h3>
-                    <p>${currentBuild.changeSets.collect { it.items.collect { item -> "- ${item.msg} by ${item.author}" }.join('<br>') }.join('<br>')}</p>
-                """,
-                to: "${RECIPIENT_EMAIL}",
-                mimeType: 'text/html'
-            )
-        }
-        unstable {
-            echo '⚠️ Build is unstable'
-            emailext (
-                subject: "⚠️ UNSTABLE: ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
-                body: """
-                    <h2 style="color: orange;">Build Unstable</h2>
-                    
-                    <p><strong>Job:</strong> ${env.JOB_NAME}</p>
-                    <p><strong>Build Number:</strong> ${env.BUILD_NUMBER}</p>
-                    
-                    <p>The build completed but some tests failed or quality gate warnings exist.</p>
-                    <p><a href="${env.BUILD_URL}console">View Console Output</a></p>
-                """,
-                to: "${RECIPIENT_EMAIL}",
-                mimeType: 'text/html'
-            )
-        }
-    }
-}
