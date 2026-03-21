@@ -158,7 +158,6 @@ pipeline {
                         # Run the new container
                         docker run -d \
                             --name petclinic-app \
-                            --network jenkins_jenkins \
                             -p 8090:8080 \
                             --restart unless-stopped \
                             ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
@@ -173,7 +172,7 @@ pipeline {
                         MAX_ATTEMPTS=30
                         
                         while [ $COUNTER -lt $MAX_ATTEMPTS ]; do
-                            if docker exec petclinic-app wget --quiet --tries=1 --spider http://localhost:8080 2>/dev/null; then
+                            if curl -s http://localhost:8090 > /dev/null 2>&1; then
                                 echo "✓ Application is up and responding!"
                                 exit 0
                             fi
