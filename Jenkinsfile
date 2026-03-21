@@ -80,87 +80,47 @@ pipeline {
         
         stage('Deploy to Test Server') {
             steps {
-                echo 'Deploying application to test environment...'
+                echo 'Deploying application...'
                 script {
-                    // Stop any existing instance
+                    // Copy JAR to a known location
                     sh '''
-                        if [ -f /var/jenkins_home/petclinic.pid ]; then
-                            PID=$(cat /var/jenkins_home/petclinic.pid)
-                            if ps -p $PID > /dev/null 2>&1; then
-                                echo "Stopping existing application (PID: $PID)"
-                                kill $PID
-                                sleep 3
-                            fi
-                            rm -f /var/jenkins_home/petclinic.pid
-                        fi
+                        mkdir -p /var/jenkins_home/deploy
+                        cp target/*.jar /var/jenkins_home/deploy/petclinic.jar
+                        echo "JAR copied to deploy directory"
                     '''
                     
-                    // Start using setsid to fully detach from Jenkins
+                    // Restart the PetClinic container to pick up new JAR
                     sh '''
-                        cd /var/jenkins_home/workspace/PetClinic-Pipeline
-                        
-                        # Use setsid to completely detach the process
-                        setsid java -jar target/*.jar --server.port=8090 \
-                            > /var/jenkins_home/petclinic.log 2>&1 < /dev/null &
-                        
-                        # Save the PID
-                        echo $! > /var/jenkins_home/petclinic.pid
-                        
-                        echo "Started PetClinic with PID: $(cat /var/jenkins_home/petclinic.pid)"
-                        
-                        # Wait a moment for it to start
-                        sleep 5
+                        # The docker command below runs from within the jenkins container
+                        # but talks to the DinD container which manages all containers
+                        docker restart petclinic-app || echo "Container will start on first deploy"
                     '''
                     
-                    // Verify it's still running after detaching
+                    // Wait for it to be healthy
                     sh '''
-                        PID=$(cat /var/jenkins_home/petclinic.pid)
-                        if ps -p $PID > /dev/null 2>&1; then
-                            echo "✓ Process is running with PID: $PID"
-                        else
-                            echo "✗ Process died after starting"
-                            tail -30 /var/jenkins_home/petclinic.log
-                            exit 1
-                        fi
-                    '''
-                    
-                    // Health check
-                    sh '''
-                        echo "Waiting for application to respond..."
+                        echo "Waiting for application to start..."
                         COUNTER=0
-                        MAX_ATTEMPTS=30
+                        MAX_ATTEMPTS=40
                         
                         while [ $COUNTER -lt $MAX_ATTEMPTS ]; do
-                            if curl -s http://localhost:8090 > /dev/null 2>&1; then
-                                echo "✓ Application is up and responding!"
-                                
-                                # Verify process is still running
-                                PID=$(cat /var/jenkins_home/petclinic.pid)
-                                if ps -p $PID > /dev/null 2>&1; then
-                                    echo "✓ Process still running (PID: $PID)"
-                                else
-                                    echo "✗ Warning: Process not found but app responded"
-                                fi
-                                
+                            if curl -s http://petclinic-app:8080 > /dev/null 2>&1; then
+                                echo "✓ Application is up!"
                                 exit 0
                             fi
                             COUNTER=$((COUNTER + 1))
-                            echo "Still waiting... attempt $COUNTER/$MAX_ATTEMPTS"
-                            sleep 2
+                            echo "Waiting... attempt $COUNTER/$MAX_ATTEMPTS"
+                            sleep 3
                         done
                         
                         echo "✗ Application failed to start"
-                        PID=$(cat /var/jenkins_home/petclinic.pid)
-                        ps -p $PID || echo "Process not running"
-                        echo "Last 30 lines of log:"
-                        tail -30 /var/jenkins_home/petclinic.log
+                        docker logs petclinic-app --tail 50
                         exit 1
                     '''
                 }
             }
             post {
                 success {
-                    echo '✓ Application deployed and verified running'
+                    echo '✓ Application deployed successfully!'
                     echo 'Access at: http://localhost:8090'
                 }
                 failure {
