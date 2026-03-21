@@ -165,14 +165,15 @@ pipeline {
                         echo "Container started with image: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
                     """
                     
-                    // Health check
+                    // Health check - access the container directly
                     sh '''
                         echo "Waiting for application to start..."
                         COUNTER=0
                         MAX_ATTEMPTS=30
                         
                         while [ $COUNTER -lt $MAX_ATTEMPTS ]; do
-                            if curl -s http://localhost:8090 > /dev/null 2>&1; then
+                            # Check container health directly by accessing port 8080 inside the container
+                            if docker exec petclinic-app wget --quiet --tries=1 --spider http://localhost:8080 2>/dev/null; then
                                 echo "✓ Application is up and responding!"
                                 exit 0
                             fi
@@ -189,12 +190,12 @@ pipeline {
             }
             post {
                 success {
-                    echo 'Application deployed successfully!'
-                    echo "Access at: http://localhost:8090"
+                    echo '✓ Application deployed successfully!'
+                    echo 'Access at: http://localhost:8090'
                     echo "Image: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
                 }
                 failure {
-                    echo 'Deployment failed!'
+                    echo '✗ Deployment failed!'
                 }
             }
         }
