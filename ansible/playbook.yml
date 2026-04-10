@@ -1,13 +1,8 @@
 ---
 - name: Configure PetClinic Application Environment
-  hosts: app_servers
-  # REMOVE THIS LINE: become: yes
+  hosts: test_servers:prod_servers
+  become: yes
   
-  vars:
-    app_port: 8090
-    app_user: jenkins
-    app_dir: /var/jenkins_home/petclinic
-    
   tasks:
     - name: Ensure application directory exists
       file:
@@ -18,14 +13,38 @@
         
     - name: Create logs directory
       file:
-        path: /var/jenkins_home/logs
+        path: "{{ log_dir }}"
         state: directory
         owner: "{{ app_user }}"
         mode: '0755'
-        
+
+    - name : Ensure Docker is installed
+      package:
+        name: docker.io
+        state: present
+
+    - name: Ensure Docker service is running
+      service: 
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Ensure app user is in docker group
+      service:
+        name: "{{ app_user }}"
+        groups: docker
+        append: yes
+
+    - name: Allow application port through firewall
+      ufw:
+        rule: allow
+        port: "{{ app_port }}"
+        proto: tcp
+
     - name: Display configuration summary
       debug:
-        msg: 
+        msg:
+          - "Host: {{ inventory_hostname }}" 
           - "Application directory: {{ app_dir }}"
           - "Application port: {{ app_port }}"
           - "Application user: {{ app_user }}"

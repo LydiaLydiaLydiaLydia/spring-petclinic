@@ -1,0 +1,4 @@
+app_user: lydia_sheehan2
+app_dir: /home/lydia_sheehan2/petclinic
+log_dir: /home/lydia_sheehan2/logs
+app_port: 8080

@@ -1,0 +1,4 @@
+app_user: jenkins
+app_dir: /var/jenkins_home/petclinic
+log_dir: /var/jenkins_home/logs
+app_port: 8090
