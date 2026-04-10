@@ -15,7 +15,7 @@ pipeline {
         DOCKER_HUB_USERNAME = 'lydialydialydialydia'
         DOCKER_IMAGE_NAME = "${DOCKER_HUB_USERNAME}/petclinic"
         DOCKER_IMAGE_TAG = "${BUILD_NUMBER}"
-        GCP_HOST = '34.53.142.171'
+        GCP_HOST = '34.79.104.95'
         GCP_USER = 'lydia_sheehan2'
     }
     
