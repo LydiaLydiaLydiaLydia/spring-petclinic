@@ -22,18 +22,21 @@
       package:
         name: docker.io
         state: present
+      when: inventory_hostname != 'localhost'
 
     - name: Ensure Docker service is running
       service: 
         name: docker
         state: started
         enabled: yes
+      when: inventory_hostname != 'localhost'
 
     - name: Ensure app user is in docker group
       user:
         name: "{{ app_user }}"
         groups: docker
         append: yes
+      when: inventory_hostname != 'localhost'
 
     - name: Allow application port through firewall
       ufw:
