@@ -30,7 +30,7 @@
         enabled: yes
 
     - name: Ensure app user is in docker group
-      service:
+      user:
         name: "{{ app_user }}"
         groups: docker
         append: yes
