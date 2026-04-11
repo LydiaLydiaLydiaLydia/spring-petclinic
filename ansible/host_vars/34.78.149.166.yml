@@ -1,3 +1,5 @@
+ansible_user: lydia_sheehan2
+ansible_ssh_private_key_file: ~/.ssh/gcp_jenkins_key
 app_user: lydia_sheehan2
 app_dir: /home/lydia_sheehan2/petclinic
 log_dir: /home/lydia_sheehan2/logs
