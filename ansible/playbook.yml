@@ -43,6 +43,7 @@
         rule: allow
         port: "{{ app_port }}"
         proto: tcp
+      when: inventory_hostname != 'localhost'
 
     - name: Display configuration summary
       debug:
