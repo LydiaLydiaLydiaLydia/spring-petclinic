@@ -15,7 +15,7 @@ pipeline {
         DOCKER_HUB_USERNAME = 'lydialydialydialydia'
         DOCKER_IMAGE_NAME = "${DOCKER_HUB_USERNAME}/petclinic"
         DOCKER_IMAGE_TAG = "${BUILD_NUMBER}"
-        GCP_HOST = '34.79.104.95'
+        GCP_HOST = '34.78.149.166'
         GCP_USER = 'lydia_sheehan2'
     }
     
@@ -82,23 +82,6 @@ pipeline {
                 }
             }
         }
-        
-        stage('Configure Environment with Ansible') {
-            steps {
-                echo 'Configuring deployment environment...'
-                script {
-                    sh '''
-                        cd ansible
-                        ansible-playbook playbook.yml -i inventory.ini
-                    '''
-                }
-            }
-            post {
-                success {
-                    echo '✓ Environment configured successfully'
-                }
-            }
-        }
 
 
         stage('Build Docker Image') {
@@ -141,6 +124,77 @@ pipeline {
             post {
                 success {
                     echo "Image pushed to Docker Hub: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
+                }
+            }
+        }
+
+        stage('Configure Environment with Ansible') {
+            steps {
+                echo 'Configuring deployment environment...'
+                sshagent(['gcp-vm-ssh']) {
+                    sh 'cd ansible && ansible-playbook playbook.yml'
+                }
+            }
+            post {
+                success {
+                    echo '✓ Environment configured successfully'
+                }
+            }
+        }
+
+        stage('Deploy to Test Server') {
+            steps {
+                echo 'Deploying application from Docker image...'
+                script {
+                    sh """
+                        # Stop and remove old container if exists
+                        docker stop petclinic-app || true
+                        docker rm petclinic-app || true
+                        
+                        # Pull the latest image
+                        docker pull ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
+                        
+                        # Run the new container
+                        docker run -d \
+                            --name petclinic-app \
+                            -p 8090:8080 \
+                            --restart unless-stopped \
+                            ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
+                        
+                        echo "Container started with image: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
+                    """
+                    
+                    // Health check - access the container directly
+                    sh '''
+                        echo "Waiting for application to start..."
+                        COUNTER=0
+                        MAX_ATTEMPTS=30
+                        
+                        while [ $COUNTER -lt $MAX_ATTEMPTS ]; do
+                            # Check container health directly by accessing port 8080 inside the container
+                            if docker exec petclinic-app wget --quiet --tries=1 --spider http://localhost:8080 2>/dev/null; then
+                                echo "✓ Application is up and responding!"
+                                exit 0
+                            fi
+                            COUNTER=$((COUNTER + 1))
+                            echo "Waiting... attempt $COUNTER/$MAX_ATTEMPTS"
+                            sleep 2
+                        done
+                        
+                        echo "✗ Application failed to start"
+                        docker logs petclinic-app --tail 50
+                        exit 1
+                    '''
+                }
+            }
+            post {
+                success {
+                    echo '✓ Application deployed successfully!'
+                    echo 'Access at: http://localhost:8090'
+                    echo "Image: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
+                }
+                failure {
+                    echo '✗ Deployment failed!'
                 }
             }
         }
@@ -203,62 +257,7 @@ pipeline {
             }
         }
 
-        stage('Deploy to Test Server') {
-            steps {
-                echo 'Deploying application from Docker image...'
-                script {
-                    sh """
-                        # Stop and remove old container if exists
-                        docker stop petclinic-app || true
-                        docker rm petclinic-app || true
-                        
-                        # Pull the latest image
-                        docker pull ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
-                        
-                        # Run the new container
-                        docker run -d \
-                            --name petclinic-app \
-                            -p 8090:8080 \
-                            --restart unless-stopped \
-                            ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
-                        
-                        echo "Container started with image: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
-                    """
-                    
-                    // Health check - access the container directly
-                    sh '''
-                        echo "Waiting for application to start..."
-                        COUNTER=0
-                        MAX_ATTEMPTS=30
-                        
-                        while [ $COUNTER -lt $MAX_ATTEMPTS ]; do
-                            # Check container health directly by accessing port 8080 inside the container
-                            if docker exec petclinic-app wget --quiet --tries=1 --spider http://localhost:8080 2>/dev/null; then
-                                echo "✓ Application is up and responding!"
-                                exit 0
-                            fi
-                            COUNTER=$((COUNTER + 1))
-                            echo "Waiting... attempt $COUNTER/$MAX_ATTEMPTS"
-                            sleep 2
-                        done
-                        
-                        echo "✗ Application failed to start"
-                        docker logs petclinic-app --tail 50
-                        exit 1
-                    '''
-                }
-            }
-            post {
-                success {
-                    echo '✓ Application deployed successfully!'
-                    echo 'Access at: http://localhost:8090'
-                    echo "Image: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
-                }
-                failure {
-                    echo '✗ Deployment failed!'
-                }
-            }
-        }
+        
     }
 
 }
