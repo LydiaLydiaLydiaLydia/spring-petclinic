@@ -1,5 +1,6 @@
 ansible_connection: local
 ansible_user: jenkins
+ansible_become: false
 app_user: jenkins
 app_dir: /var/jenkins_home/petclinic
 log_dir: /var/jenkins_home/logs
