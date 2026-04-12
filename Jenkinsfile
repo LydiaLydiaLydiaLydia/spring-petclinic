@@ -148,14 +148,14 @@ pipeline {
                 script {
                     sh """
                         # Stop and remove old container if exists
-                        docker stop petclinic-app || true
-                        docker rm petclinic-app || true
+                        DOCKER_HOST=unix:///var/run/docker.sock docker stop petclinic-app || true
+                        DOCKER_HOST=unix:///var/run/docker.sock docker rm petclinic-app || true
                         
                         # Pull the latest image
-                        docker pull ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
+                        DOCKER_HOST=unix:///var/run/docker.sock docker pull ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
                         
                         # Run the new container
-                        docker run -d \
+                        DOCKER_HOST=unix:///var/run/docker.sock docker run -d \
                             --name petclinic-app \
                             -p 8090:8080 \
                             --restart unless-stopped \
@@ -172,8 +172,9 @@ pipeline {
                         
                         while [ $COUNTER -lt $MAX_ATTEMPTS ]; do
                             # Check container health directly by accessing port 8080 inside the container
-                            if docker exec petclinic-app wget --quiet --tries=1 --spider http://localhost:8080 2>/dev/null; then
-                                echo "✓ Application is up and responding!"
+                            DOCKER_HOST=unix:///var/run/docker.sock docker exec petclinic-app wget --quiet --tries=1 --spider http://localhost:8080 2>/dev/null; then
+            echo "Application is up and responding!"
+                                echo "Application is up and responding!"
                                 exit 0
                             fi
                             COUNTER=$((COUNTER + 1))
@@ -181,20 +182,20 @@ pipeline {
                             sleep 2
                         done
                         
-                        echo "✗ Application failed to start"
-                        docker logs petclinic-app --tail 50
+                        echo "Application failed to start"
+                        DOCKER_HOST=unix:///var/run/docker.sock docker logs petclinic-app --tail 50
                         exit 1
                     '''
                 }
             }
             post {
                 success {
-                    echo '✓ Application deployed successfully!'
+                    echo 'Application deployed successfully!'
                     echo 'Access at: http://localhost:8090'
                     echo "Image: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
                 }
                 failure {
-                    echo '✗ Deployment failed!'
+                    echo 'Deployment failed!'
                 }
             }
         }
