@@ -128,7 +128,7 @@ pipeline {
             }
         }
 
-        stage('Configure Environment with Ansible') {
+        stage('Configure Environments with Ansible') {
             steps {
                 echo 'Configuring deployment environment...'
                 sshagent(['gcp-vm-ssh']) {
@@ -137,7 +137,7 @@ pipeline {
             }
             post {
                 success {
-                    echo '✓ Environment configured successfully'
+                    echo 'SUCCESS - environments configured with Ansible'
                 }
             }
         }
