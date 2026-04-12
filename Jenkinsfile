@@ -172,8 +172,7 @@ pipeline {
                         
                         while [ $COUNTER -lt $MAX_ATTEMPTS ]; do
                             # Check container health directly by accessing port 8080 inside the container
-                            DOCKER_HOST=unix:///var/run/docker.sock docker exec petclinic-app wget --quiet --tries=1 --spider http://localhost:8080 2>/dev/null; then
-            echo "Application is up and responding!"
+                            if DOCKER_HOST=unix:///var/run/docker.sock docker exec petclinic-app wget --quiet --tries=1 --spider http://localhost:8080 2>/dev/null; then
                                 echo "Application is up and responding!"
                                 exit 0
                             fi
