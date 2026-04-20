@@ -35,7 +35,7 @@ public class NamedEntity extends BaseEntity {
 	private String name;
 
 	public String getName() {
-		return this.nme;
+		return this.name;
 	}
 
 	public void setName(String name) {
