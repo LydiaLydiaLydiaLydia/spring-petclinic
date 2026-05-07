@@ -1,6 +1,6 @@
 FROM eclipse-temurin:17-jre-alpine
 
-LABEL maintainer="your-name"
+LABEL maintainer="lydia"
 LABEL application="spring-petclinic"
 
 WORKDIR /app
