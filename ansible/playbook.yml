@@ -1,6 +1,6 @@
 ---
 - name: Configure PetClinic Application Environment
-  hosts: test_servers:prod_servers
+  hosts: test_servers
   become: yes
   
   tasks:
@@ -18,47 +18,10 @@
         owner: "{{ app_user }}"
         mode: '0755'
 
-    - name : Ensure Docker is installed
-      package:
-        name: docker.io
-        state: present
-      when: inventory_hostname != 'localhost'
-
-    - name: Ensure Docker service is running
-      service: 
-        name: docker
-        state: started
-        enabled: yes
-      when: inventory_hostname != 'localhost'
-
-    - name: Ensure app user is in docker group
-      user:
-        name: "{{ app_user }}"
-        groups: docker
-        append: yes
-      when: inventory_hostname != 'localhost'
-
     - name: Allow application port through firewall
       ufw:
         rule: allow
         port: "{{ app_port }}"
-        proto: tcp
-      when: inventory_hostname != 'localhost'
-
-    - name: Install Node Exporter on GCP
-      docker_container:
-        name: node-exporter
-        image: prom/node-exporter:latest
-        state: started
-        restart_policy: unless-stopped
-        ports:
-          - "9100:9100"
-      when: inventory_hostname != 'localhost'
-
-    - name: Open Node Exporter port in firewall
-      ufw:
-        rule: allow
-        port: "9100"
         proto: tcp
       when: inventory_hostname != 'localhost'
 
