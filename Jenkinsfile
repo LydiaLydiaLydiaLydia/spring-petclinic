@@ -103,6 +103,18 @@ pipeline {
             }
         }
 
+        stage('Configure Environments with Ansible') {
+            steps {
+                echo 'Configuring deployment environment...'
+                sh 'cd ansible && ansible-playbook playbook.yml'
+            }
+            post {
+                success {
+                    echo 'SUCCESS - environments configured with Ansible'
+                }
+            }
+        }
+
 
         stage('Deploy to Test Server') {
             steps {
@@ -121,7 +133,7 @@ pipeline {
                     
                     # Wait for the application to start
                     echo 'Waiting for application to start...'
-                            
+
                     # Retry health check for up to 60 seconds
                     for i in $(seq 1 12); do
                         sleep 5
