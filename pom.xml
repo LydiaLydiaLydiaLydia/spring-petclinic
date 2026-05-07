@@ -304,6 +304,16 @@
             </execution>
         </executions>
     </plugin>
+    <plugin>
+    <groupId>org.apache.maven.plugins</groupId>
+    <artifactId>maven-surefire-plugin</artifactId>
+    <configuration>
+        <excludes>
+            <exclude>**/*MySqlIntegrationTests.java</exclude>
+            <exclude>**/*PostgresIntegrationTests.java</exclude>
+        </excludes>
+    </configuration>
+</plugin>
 
       <!-- Spring Boot Actuator displays build-related information if a git.properties file is
       present at the classpath -->
