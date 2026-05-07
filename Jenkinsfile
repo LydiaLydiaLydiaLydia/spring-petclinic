@@ -110,7 +110,7 @@ pipeline {
 
                 sh '''
                     # Kill any process already using the port
-                    fuser -k ${DEPLOY_PORT}/tcp || true
+                    kill $(cat /tmp/${APP_NAME}.pid) 2>/dev/null || true
                     
                     # Run the JAR in the background
                     nohup java -jar target/*.jar \
@@ -121,11 +121,16 @@ pipeline {
                     
                     # Wait for the application to start
                     echo 'Waiting for application to start...'
-                    sleep 15
+                            
+                    # Retry health check for up to 60 seconds
+                    for i in $(seq 1 12); do
+                        sleep 5
+                        echo "Health check attempt $i/12..."
+                        curl --fail --silent http://localhost:${DEPLOY_PORT}/actuator/health && exit 0
+                    done
                     
-                    # Health check
-                    curl --fail http://localhost:${DEPLOY_PORT}/actuator/health || \
-                        (echo 'Health check failed!' && exit 1)
+                    echo 'Health check failed after 60 seconds!'
+                    exit 1
                 '''
                 
             }
