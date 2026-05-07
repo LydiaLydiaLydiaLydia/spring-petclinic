@@ -63,7 +63,7 @@ pipeline {
         stage('Integration Tests') {
             steps {
                 echo 'Running integration tests...'
-                sh 'mvn failsafe:integration-test failsafe:verify'
+                sh 'mvn failsafe:integration-test failsafe:verify -DDOCKER_HOST=tcp://docker:2376 -DDOCKER_TLS_VERIFY=1'
             }
             post {
                 always {
