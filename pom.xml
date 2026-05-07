@@ -276,6 +276,25 @@
           </execution>
         </executions>
       </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-failsafe-plugin</artifactId>
+        <configuration>
+            <classesDirectory>${project.build.outputDirectory}</classesDirectory>
+            <includes>
+                <include>**/*IntegrationTests.java</include>
+                <include>**/*IT.java</include>
+            </includes>
+        </configuration>
+        <executions>
+            <execution>
+                <goals>
+                    <goal>integration-test</goal>
+                    <goal>verify</goal>
+                </goals>
+            </execution>
+        </executions>
+    </plugin>
 
       <!-- Spring Boot Actuator displays build-related information if a git.properties file is
       present at the classpath -->

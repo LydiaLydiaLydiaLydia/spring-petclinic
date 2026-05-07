@@ -83,6 +83,25 @@ pipeline {
             }
         }
 
+        stage('Integration Tests') {
+            steps {
+                echo 'Running integration tests...'
+                sh 'mvn failsafe:integration-test failsafe:verify'
+            }
+            post {
+                always {
+                    junit '**/target/failsafe-reports/*.xml'
+                    echo 'Integration test results published'
+                }
+                success {
+                    echo 'All integration tests passed!'
+                }
+                failure {
+                    echo 'Integration tests failed!'
+                }
+            }
+        }
+
 
         stage('Deploy to Test Server') {
             steps {
