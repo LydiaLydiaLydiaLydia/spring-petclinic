@@ -56,6 +56,7 @@ pipeline {
                           -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
                           -Dsonar.organization=${SONAR_ORGANIZATION} \
                           -Dsonar.host.url=https://sonarcloud.io
+                          -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml,target/site/jacoco-it/jacoco.xml
                     """
                 }
             }
