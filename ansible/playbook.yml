@@ -17,6 +17,26 @@
         owner: "jenkins"
         mode: '0755'
 
+    - name : Ensure Docker is installed
+      package:
+        name: docker.io
+        state: present
+      when: inventory_hostname != 'localhost'
+
+    - name: Ensure Docker service is running
+      service: 
+        name: docker
+        state: started
+        enabled: yes
+      when: inventory_hostname != 'localhost'
+
+    - name: Ensure app user is in docker group
+      user:
+        name: "jenkins"
+        groups: docker
+        append: yes
+      when: inventory_hostname != 'localhost'
+
     - name: Allow application port through firewall
       ufw:
         rule: allow
