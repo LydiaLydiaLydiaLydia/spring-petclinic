@@ -150,7 +150,9 @@ pipeline {
         stage('Configure Environments with Ansible') {
             steps {
                 echo 'Configuring deployment environment...'
-                sh 'cd ansible && ansible-playbook playbook.yml'
+                sshagent(['gcp-vm-ssh']) {
+                    sh 'cd ansible && ansible-playbook playbook.yml'
+                }
             }
             post {
                 success {

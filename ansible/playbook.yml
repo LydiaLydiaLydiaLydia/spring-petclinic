@@ -1,20 +1,21 @@
+---
 - name: Configure PetClinic Application Environment
-  hosts: test_servers
+  hosts: test_servers:prod_servers
   become: yes
   
   tasks:
     - name: Ensure application directory exists
       file:
-        path: "/var/jenkins_home/petclinic"
+        path: "{{ app_dir }}"
         state: directory
-        owner: "jenkins"
+        owner: "{{ app_user }}"
         mode: '0755'
         
     - name: Create logs directory
       file:
-        path: "/var/jenkins_home/logs"
+        path: "{{ log_dir }}"
         state: directory
-        owner: "jenkins"
+        owner: "{{ app_user }}"
         mode: '0755'
 
     - name : Ensure Docker is installed
@@ -32,7 +33,7 @@
 
     - name: Ensure app user is in docker group
       user:
-        name: "jenkins"
+        name: "{{ app_user }}"
         groups: docker
         append: yes
       when: inventory_hostname != 'localhost'
@@ -40,7 +41,7 @@
     - name: Allow application port through firewall
       ufw:
         rule: allow
-        port: "8090"
+        port: "{{ app_port }}"
         proto: tcp
       when: inventory_hostname != 'localhost'
 
@@ -48,6 +49,6 @@
       debug:
         msg:
           - "Host: {{ inventory_hostname }}" 
-          - "Application directory: /var/jenkins_home/petclinic"
-          - "Application port: 8090"
-          - "Application user: jenkins"
+          - "Application directory: {{ app_dir }}"
+          - "Application port: {{ app_port }}"
+          - "Application user: {{ app_user }}"
