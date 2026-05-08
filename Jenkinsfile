@@ -202,6 +202,64 @@ pipeline {
                 }
             }
         }
+
+        stage('Deploy to Google Cloud') {
+            steps {
+                echo 'Deploying to GCP VM...'
+                script {
+                    
+                    
+                    sshagent(['gcp-vm-ssh']) {
+                        sh """
+                            ssh -o StrictHostKeyChecking=no ${GCP_USER}@${GCP_HOST} '
+                                # Stop and remove old container
+                                docker stop petclinic || true
+                                docker rm petclinic || true
+                                
+                                # Pull latest image
+                                docker pull ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
+                                
+                                # Run new container
+                                docker run -d \
+                                    --name petclinic \
+                                    -p 8080:8080 \
+                                    --restart unless-stopped \
+                                    ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
+                                
+                                echo "Deployed image: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
+                            '
+                        """
+                        
+                        // Added to give it time to start!
+                        sh """
+                            ssh -o StrictHostKeyChecking=no ${GCP_USER}@${GCP_HOST} '
+                                echo "Waiting for application to start..."
+                                for i in {1..30}; do
+                                    if curl -s http://localhost:8080 > /dev/null 2>&1; then
+                                        echo "Application is up on GCP!"
+                                        exit 0
+                                    fi
+                                    echo "Waiting... attempt \$i/30"
+                                    sleep 2
+                                done
+                                echo "Application failed to start"
+                                docker logs petclinic --tail 30
+                                exit 1
+                            '
+                        """
+                    }
+                }
+            }
+            post {
+                success {
+                    echo 'Successfully deployed to Google Cloud!'
+                    echo "Application URL: http://${GCP_HOST}:8080"
+                }
+                failure {
+                    echo 'GCP deployment failed'
+                }
+            }
+        }
         
     }
 
