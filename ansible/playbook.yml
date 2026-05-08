@@ -45,6 +45,23 @@
         proto: tcp
       when: inventory_hostname != 'localhost'
 
+    - name: Install Node Exporter on GCP
+      docker_container:
+        name: node-exporter
+        image: prom/node-exporter:latest
+        state: started
+        restart_policy: unless-stopped
+        ports:
+          - "9100:9100"
+      when: inventory_hostname != 'localhost'
+
+    - name: Open Node Exporter port in firewall
+      ufw:
+        rule: allow
+        port: "9100"
+        proto: tcp
+      when: inventory_hostname != 'localhost'
+
     - name: Display configuration summary
       debug:
         msg:
